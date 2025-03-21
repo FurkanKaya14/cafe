@@ -1,3 +1,6 @@
+<html>
+<body>
+    
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -14,16 +17,21 @@ if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
         echo "<tr>
                 <td>{$product['name']}</td>
                 <td>{$product['price']}₺</td>
-                <td>{$product['quantity']}</td>
+                <td>
+                    <button class='decrease-item' data-id='{$productId}'>➖</button>
+                    <span>{$product['quantity']}</span>
+                    <button class='increase-item' data-id='{$productId}'>➕</button>
+                </td>
                 <td>{$subtotal}₺</td>
-                <td><button class='remove-item' data-id='{$productId}'>❌ Sepetten Çıkar</button></td>
+                <td><button class='remove-item' data-id='{$productId}'>❌</button></td>
               </tr>";
     }
 
     echo "<tr><td colspan='3'>Genel Toplam</td><td>{$total}₺</td><td></td></tr>";
     echo "</table>";
-    echo "<p><button id='clear-cart' style='color: red;'>🗑️ Sepeti Temizle</button></p>";
 } else {
-    echo "<p>Sepetiniz boş.</p>";
+    echo "<p class='bos_sepet'>Sepetiniz boş.</p>";
 }
 ?>
+</body>
+</html>

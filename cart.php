@@ -1,7 +1,9 @@
+<html>
 <head>
     <link rel="stylesheet" type="text/css" href="cart.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
+<body>
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -22,7 +24,6 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'];
 
-    // Ürün ekleme
     if ($action === "add" && isset($_POST['id'], $_POST['name'], $_POST['price'])) {
         $productId = $_POST['id'];
         $productName = $_POST['name'];
@@ -43,15 +44,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Ürünü sepetten çıkarma
     if ($action === "remove" && isset($_POST['id'])) {
         $productId = $_POST['id'];
         unset($_SESSION['cart'][$productId]);
     }
 
-    // Sepeti temizleme
     if ($action === "clear") {
         unset($_SESSION['cart']);
+    }
+
+    // Miktarı artırma
+    if ($action === "increase" && isset($_POST['id'])) {
+        $productId = $_POST['id'];
+        if (isset($_SESSION['cart'][$productId])) {
+            $_SESSION['cart'][$productId]['quantity'] += 1;
+        }
+    }
+
+    // Miktarı azaltma
+    if ($action === "decrease" && isset($_POST['id'])) {
+        $productId = $_POST['id'];
+        if (isset($_SESSION['cart'][$productId])) {
+            if ($_SESSION['cart'][$productId]['quantity'] > 1) {
+                $_SESSION['cart'][$productId]['quantity'] -= 1;
+            } else {
+                unset($_SESSION['cart'][$productId]); // Eğer 1 ise, ürünü tamamen sil
+            }
+        }
     }
 
     exit;
@@ -135,6 +154,24 @@ $(document).ready(function() {
         });
     });
 
+    // Miktarı artırma
+    $(document).on("click", ".increase-item", function() {
+        var productId = $(this).data("id");
+
+        $.post("cart.php", { action: "increase", id: productId }, function() {
+            $("#cart").load("cart_view.php");
+        });
+    });
+
+    // Miktarı azaltma
+    $(document).on("click", ".decrease-item", function() {
+        var productId = $(this).data("id");
+
+        $.post("cart.php", { action: "decrease", id: productId }, function() {
+            $("#cart").load("cart_view.php");
+        });
+    });
+
     // Sepeti temizleme
     $("#clear-cart").click(function() {
         $.post("cart.php", { action: "clear" }, function() {
@@ -154,3 +191,6 @@ $(document).ready(function() {
     });
 });
 </script>
+
+</body>
+</html>

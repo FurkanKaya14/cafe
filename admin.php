@@ -22,6 +22,7 @@ try {
     <title>Admin Paneli</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="admin.css">
 </head>
 <body class="bg-light">
 
@@ -31,16 +32,19 @@ try {
         <?php
         try {
             $stmt = $pdo->query("SELECT DISTINCT c.Customer_ID, c.Name 
-                                 FROM Orders o 
-                                 JOIN Customer c ON o.Customer_ID = c.Customer_ID 
-                                 WHERE o.Status = 'active'");
+                                    FROM Orders o 
+                                    JOIN Customer c ON o.Customer_ID = c.Customer_ID 
+                                    WHERE o.Status = 'active'");
             $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if ($orders) {
+                $masaNumaralari = [];
                 foreach ($orders as $order) {
-                    echo "<button class='btn btn-outline-danger order-btn' data-table-number='{$order['Name']}'>
-                            Masa: " . htmlspecialchars($order['Name']) . "
-                          </button>";
+                    if (!in_array($order['Name'], $masaNumaralari)) {
+                        $masaNumaralari[] = $order['Name'];
+                        echo "<button class='btn btn-outline-danger order-btn' data-table-number='{$order['Name']}'>"
+                                . htmlspecialchars($order['Name']) . "</button>";
+                    }
                 }
             } else {
                 echo "<p class='text-center text-muted'>Aktif sipariş bulunmamaktadır.</p>";
@@ -68,16 +72,13 @@ $(document).ready(function() {
                 var html = "<h3 class='text-danger'>" + tableNumber + " Siparişleri</h3>";
                 html += "<table class='table table-bordered mt-3'>";
                 html += "<thead class='table-dark'><tr><th>Ürün</th><th>Adet</th></tr></thead><tbody>";
-
+                
                 data.orders.forEach(function(order) {
-                    html += "<tr>";
-                    html += "<td>" + order.Name + "</td>";
-                    html += "<td>" + order.Quantity + "</td>";
-                    html += "</tr>";
+                    html += "<tr><td>" + order.Name + "</td><td>" + order.Quantity + "</td></tr>";
                 });
 
                 html += "</tbody></table>";
-                html += "<button id='complete-order' class='btn btn-success mt-3' data-order-id='" + data.orders[0].Order_ID + "'>Siparişi Tamamla</button>";
+                html += "<button class='btn btn-success complete-order' data-table-number='" + tableNumber + "'>Siparişi Tamamla</button>";
                 $("#order-details").html(html);
             } else {
                 $("#order-details").html("<p class='text-muted'>" + data.message + "</p>");
@@ -85,10 +86,10 @@ $(document).ready(function() {
         });
     });
 
-    $(document).on("click", "#complete-order", function() {
-        var orderId = $(this).data("order-id");
+    $(document).on("click", ".complete-order", function() {
+        var tableNumber = $(this).data("table-number");
 
-        $.post("admin_process.php", { action: "complete_order", order_id: orderId }, function(response) {
+        $.post("admin_process.php", { action: "complete_order", table_number: tableNumber }, function(response) {
             var data = JSON.parse(response);
             alert(data.message);
             location.reload();
