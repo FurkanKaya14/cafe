@@ -18,12 +18,18 @@ if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
                 <td>{$product['name']}</td>
                 <td>{$product['price']}₺</td>
                 <td>
-                    <button class='decrease-item' data-id='{$productId}'>➖</button>
+                    <button class='decrease-item' data-id='{$productId}'>
+                    <img src='eksi.png' alt='eksi' style='width: 20px; height: 20px;'>
+                    </button>
                     <span>{$product['quantity']}</span>
-                    <button class='increase-item' data-id='{$productId}'>➕</button>
+                    <button class='increase-item' data-id='{$productId}'>
+                    <img src='arti.png' alt='arti' style='width: 20px; height: 20px;'>
+                    </button>
                 </td>
                 <td>{$subtotal}₺</td>
-                <td><button class='remove-item' data-id='{$productId}'>❌</button></td>
+                <td><button class='remove-item' data-id='{$productId}'>
+                <img src='sil.png' alt='sil' style='width: 20px; height: 20px;'>
+                </button></td>
               </tr>";
     }
 
