@@ -23,6 +23,34 @@ try {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="icon" type="image/png" href="img/party.png" sizes="196x196" />
     <link rel="stylesheet" type="text/css" href="odeme.css">
+    <style>
+        /* input number alanındaki yukarı/aşağı okları gizle */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+
+        /* Buton renklerini özelleştir */
+        .btn-minus {
+            background-color: #b30000;
+            color: #000000;
+            border-color: #fff0f0;
+        }
+
+        .btn-plus {
+            background-color: #b30000;
+            color: #000000;
+            border-color: #fff0f0;
+        }
+        .btn-minus:hover, .btn-plus:hover {
+            background-color: #800000;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -60,9 +88,13 @@ try {
 <script>
 $(document).ready(function() {
     $(document).on("click", ".order-btn", function() {
-        var tableNumber = $(this).data("table-number");
+    $(".order-btn").removeClass("active"); // Diğer butonlardan "active" sınıfını kaldır
+    $(this).addClass("active"); // Tıklanan butona "active" sınıfını ekle
 
-        $.post("odeme_process.php", { action: "get_orders", table_number: tableNumber }, function(response) {
+    var tableNumber = $(this).data("table-number");
+
+    $.post("odeme_process.php", { action: "get_orders", table_number: tableNumber }, function(response) {
+        try {
             var data = JSON.parse(response);
             if (data.success) {
                 var html = "<h3 class='text-danger'>" + tableNumber + " Siparişleri</h3>";
@@ -74,24 +106,50 @@ $(document).ready(function() {
                     html += "<td>" + order.Name + "</td>";
                     html += "<td data-initial-quantity='" + order.Quantity + "'>" + order.Quantity + "</td>";
                     html += "<td>" + order.Price + " TL</td>";
-                    html += "<td><input type='number' class='pay-quantity' data-order-id='" + order.Order_ID + "' data-item-id='" + order.Item_ID + "' max='" + order.Quantity + "' value='" + order.Quantity + "'></td>";
+                    html += "<td>" +
+                        "<div class='input-group justify-content-center'>" +
+                        "<button class='btn btn-minus' type='button'><img src='img/eksi.png' alt='eksi' style='width: 20px; height: 20px;'></button>" +
+                        "<input type='number' class='form-control text-center pay-quantity' data-order-id='" + order.Order_ID + "' data-item-id='" + order.Item_ID + "' data-order-detail-id='" + order.Order_Detail_ID + "' max='" + order.Quantity + "' min='0' value='" + order.Quantity + "'>" +
+                        "<button class='btn btn-plus' type='button'><img src='img/arti.png' alt='arti' style='width: 20px; height: 20px;'></button>" +
+                        "</div>" +
+                        "</td>";
                     html += "</tr>";
                 });
 
                 html += "</tbody></table>";
-                html += "<h4 class='text-danger'>Ödenecek Toplam: <span id='pay-total'>0</span></h4>";
+                html += "<h4 class='text-danger'>Ödenecek Toplam: <span id='pay-total'>0</span> TL</h4>";
                 html += "<button id='complete-order' class='btn btn-success mt-3'>Ödeme Al</button>";
                 html += "<button id='close-bill' class='btn btn-danger mt-3 ms-2'>Hesabı Kapat</button>";
                 $("#order-details").html(html);
-                calculatePayTotal(); // İlk toplam hesaplaması
+                calculatePayTotal();
             } else {
                 $("#order-details").html("<p class='text-muted'>" + data.message + "</p>");
             }
-        });
+        } catch (error) {
+            console.error("JSON ayrıştırma hatası:", error, response);
+            alert("Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+        }
+    });
+});
+    $(document).on("change", ".pay-quantity", function() {
+        calculatePayTotal();
     });
 
-    $(document).on("change", ".pay-quantity", function() {
-        calculatePayTotal(); // Miktar değiştiğinde toplamı güncelle
+    $(document).on("click", ".btn-minus", function() {
+        var input = $(this).siblings(".pay-quantity");
+        var current = parseInt(input.val());
+        if (!isNaN(current) && current > 0) {
+            input.val(current - 1).trigger("change");
+        }
+    });
+
+    $(document).on("click", ".btn-plus", function() {
+        var input = $(this).siblings(".pay-quantity");
+        var max = parseInt(input.attr("max"));
+        var current = parseInt(input.val());
+        if (!isNaN(current) && current < max) {
+            input.val(current + 1).trigger("change");
+        }
     });
 
     function calculatePayTotal() {
@@ -101,7 +159,7 @@ $(document).ready(function() {
             var price = Number($(this).closest("tr").find("td:nth-child(3)").text().replace(" TL", "").trim()) || 0;
             total += quantity * price;
         });
-        $("#pay-total").text(total.toFixed(2) + " TL"); // Toplam miktarı güncelle
+        $("#pay-total").text(total.toFixed(2));
     }
 
     $(document).on("click", "#complete-order", function() {
@@ -109,36 +167,47 @@ $(document).ready(function() {
         var items = [];
 
         $(".pay-quantity").each(function() {
-            var quantityText = $(this).closest("tr").find("td:nth-child(2)").text().trim();
-            var quantity = parseInt(quantityText, 10);
             var payQuantity = parseInt($(this).val(), 10) || 0;
 
-            if (isNaN(quantity) || isNaN(payQuantity)) {
-                console.error("Geçersiz sayı:", quantityText, payQuantity);
-                return;
+            if (payQuantity > 0) {
+                items.push({
+                    order_detail_id: $(this).data("order-detail-id"),
+                    quantity_difference: payQuantity
+                });
             }
-
-            var newQuantity = Math.max(0, quantity - payQuantity);
-            $(this).closest("tr").find("td:nth-child(2)").text(newQuantity.toString());
-
-            items.push({
-                item_id: $(this).data("item-id"),
-                pay_quantity: payQuantity
-            });
         });
 
-        $.post("odeme_process.php", { action: "complete_order", order_id: orderId, items: JSON.stringify(items) }, function(response) {
-            var data = JSON.parse(response);
-            alert(data.message);
-            location.reload();
+        if (items.length === 0) {
+            alert("Lütfen ödenecek miktarları girin.");
+            return;
+        }
+
+        $.post("odeme_process.php", { action: "update_quantities", order_id: orderId, items: JSON.stringify(items) }, function(response) {
+            try {
+                var data = JSON.parse(response);
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error("JSON ayrıştırma hatası:", error, response);
+                alert("Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+            }
         });
     });
 
-    // Hesabı Kapat Butonu
     $(document).on("click", "#close-bill", function() {
-        var orderId = $(".pay-quantity").first().data("order-id");
+    var tableNumber = $(".order-btn.active").data("table-number");
 
-        $.post("odeme_process.php", { action: "close_bill", order_id: orderId }, function(response) {
+    if (!tableNumber) {
+        alert("Lütfen bir masa seçin.");
+        return;
+    }
+
+    $.post("odeme_process.php", { action: "close_bill", table_number: tableNumber }, function(response) {
+        try {
             var data = JSON.parse(response);
             if (data.success) {
                 alert(data.message);
@@ -147,10 +216,13 @@ $(document).ready(function() {
             } else {
                 alert(data.message);
             }
-        });
+        } catch (error) {
+            console.error("JSON ayrıştırma hatası:", error, response);
+            alert("Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.");
+        }
     });
 });
-
+});
 </script>
 
 </body>
